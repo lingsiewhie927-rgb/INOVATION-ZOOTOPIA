@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐰 疯狂动物城·拔河对战（完整功能版）🦊</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e0f2fe;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .admin-bar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 2px solid #bae6fd;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .choice-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .choice-btn:active {
+            transform: scale(0.97);
+        }
+        .battlefield {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+        }
+        .rope-container {
+            transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            overflow: visible;
+            gap: 0;
+        }
+        .rope {
+            height: 22px;
+            background: #795548;
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+            background-size: 24px 24px;
+            border-radius: 40px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+            border: 3px solid #3e2723;
+            width: 380px;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .fixed-center-dash {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 300px;
+            background: repeating-linear-gradient(to bottom, #64748b 0px, #64748b 12px, transparent 12px, transparent 24px);
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .rope-marker {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            pointer-events: none;
+        }
+        .rope-marker>div {
+            width: 12px;
+            height: 110px;
+            background: linear-gradient(to bottom, #fde047, #f59e0b);
+            border: 4px solid white;
+            border-radius: 20px;
+        }
+        @keyframes pull-feedback {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.05) rotate(-2deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+        .pull-anim {
+            animation: pull-feedback 0.3s ease-out;
+        }
+        .character {
+            transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+            filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.2));
+            flex-shrink: 0;
+            width: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .character svg {
+            width: 130px;
+            height: auto;
+            pointer-events: none;
+        }
+        .modal-overlay {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0) rotate(var(--base-rot));
+            }
+            50% {
+                transform: translateY(-8px) rotate(var(--base-rot));
+            }
+        }
+        .idle-float {
+            animation: float 4s infinite ease-in-out;
+        }
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
+        }
+        .edit-table th {
+            background: #f8fafc;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #334155;
+        }
+        .batch-panel {
+            background: #fefce8;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 2px solid #fde047;
+        }
+        .password-eye {
+            cursor: pointer;
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            user-select: none;
+        }
+        .lock-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: white;
+            backdrop-filter: blur(12px);
+        }
+        .disabled-btn {
+            opacity: 0.6;
+            pointer-events: none;
+            filter: grayscale(0.1);
+        }
+        .random-order-hint {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部管理栏 -->
+    <header class="admin-bar p-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex gap-2">
+                <button id="timeBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">⏱ 时长</button>
+                <button id="quizBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">📚 题库</button>
+                <button id="changePwdBtn" class="px-4 py-1.5 bg-white border-2 border-purple-200 rounded-xl text-purple-700 font-bold text-sm hover:bg-purple-50 shadow-sm">🔑 改密码</button>
+                <button id="generateHtmlBtn" class="px-4 py-1.5 bg-white border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold text-sm hover:bg-emerald-50 shadow-sm">💾 生成HTML</button>
+            </div>
+            <div class="text-center">
+                <h1 class="text-xl font-black text-slate-800 tracking-tight">ZOOTOPIA <span class="text-blue-600">TUG</span>·<span class="text-orange-500">WAR</span><span class="text-xs ml-1">⏱️ 完整功能版</span></h1>
+            </div>
+            <div class="flex gap-2">
+                <button id="resetBtn" class="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 border border-slate-200">🔄 重置</button>
+                <button id="startBtn" class="bg-blue-600 text-white py-1.5 px-7 rounded-xl font-black text-sm shadow-lg hover:bg-blue-700 transition">⚡ 开始对战</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 时长弹窗 -->
+    <div id="time-modal" class="modal-overlay">
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-80 border-4 border-blue-100">
+            <h3 class="font-black text-slate-800 mb-4 text-center text-2xl">⏳ 比赛时间 (10~600秒)</h3>
+            <input type="number" id="setup-time" value="240" min="10" max="600" step="5" class="w-full px-4 py-5 border-4 border-slate-100 rounded-3xl outline-none focus:border-blue-500 font-black text-center text-5xl text-slate-700">
+            <button id="saveTimeBtn" class="w-full mt-6 bg-slate-800 text-white py-4 rounded-2xl font-black text-lg hover:bg-slate-900">确定并保存</button>
+        </div>
+    </div>
+
+    <!-- 题库弹窗 -->
+    <div id="ques-modal" class="modal-overlay">
+        <div class="bg-white p-6 rounded-[2.5rem] shadow-2xl w-full max-w-6xl border-4 border-orange-100 mx-4" style="max-height: 90vh; overflow-y: auto;">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-black text-slate-800 text-2xl">📖 编辑题库</h3>
+                <div class="flex gap-2">
+                    <button id="batchOpenBtn" class="bg-indigo-500 text-white px-4 py-2 rounded-xl font-bold text-sm">📋 批量导入</button>
+                    <button id="addRowBtn" class="bg-green-500 text-white px-4 py-2 rounded-xl font-bold text-sm">➕ 添加一行</button>
+                    <button id="resetTableBtn" class="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl font-bold text-sm">🔄 恢复默认</button>
+                </div>
+            </div>
+            <div id="batch-panel" class="batch-panel hidden">
+                <div class="flex justify-between mb-2"><span class="font-bold">📌 格式: 题目 | A | B | C | D | 正确答案</span><button id="closeBatchBtn" class="text-gray-500">✕</button></div>
+                <textarea id="batch-text" rows="4" class="w-full p-3 border-2 rounded-xl font-mono text-sm" placeholder="示例：太阳可以提供我们什么？|衣服|玩具|光和热|冰淇淋|光和热"></textarea>
+                <div class="flex justify-end gap-2 mt-3"><button id="clearBatchBtn" class="px-3 py-1 bg-gray-200 rounded-xl">清空</button><button id="importBatchBtn" class="px-4 py-1 bg-indigo-600 text-white rounded-xl">✨ 解析追加</button></div>
+            </div>
+            <div class="table-wrapper"><table class="edit-table w-full text-sm border-collapse"><thead class="sticky top-0 bg-slate-50"><tr><th class="p-2">题目</th><th class="p-2">A</th><th class="p-2">B</th><th class="p-2">C</th><th class="p-2">D</th><th class="p-2">正确答案</th><th class="p-2 w-12">操作</th></tr></thead><tbody id="questions-table-body"></tbody></table></div>
+            <div class="flex justify-end mt-5"><button id="saveQuesBtn" class="bg-orange-500 text-white px-8 py-3 rounded-2xl font-black shadow-md">💾 保存并关闭</button></div>
+        </div>
+    </div>
+
+    <!-- 密码相关模态框 -->
+    <div id="password-modal" class="modal-overlay" style="z-index: 1100;">
+        <div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-indigo-200">
+            <div class="text-center mb-4">
+                <h3 class="font-black text-2xl">🔐 管理员验证</h3>
+                <p class="text-sm text-slate-500">请输入密码</p>
+            </div>
+            <div class="relative mb-3"><input type="password" id="password-input" class="w-full p-3 border-2 rounded-xl pr-10"><span id="toggle-password" class="password-eye">👁️</span></div>
+            <div class="flex justify-between text-sm mb-4"><span id="attempts-left" class="text-red-500 font-bold">剩余次数: 5</span><span id="wait-timer"></span></div>
+            <div class="flex gap-3"><button id="cancel-pwd-btn" class="flex-1 py-2 rounded-xl border">取消</button><button id="confirm-pwd-btn" class="flex-1 py-2 rounded-xl bg-indigo-600 text-white">确认</button></div>
+        </div>
+    </div>
+    <div id="change-pwd-modal" class="modal-overlay" style="z-index: 1100;">
+        <div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-purple-200">
+            <div class="text-center mb-4">
+                <h3 class="font-black text-2xl">更换密码</h3>
+            </div>
+            <div class="relative mb-3"><input type="password" id="current-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="当前密码"><span id="toggle-current" class="password-eye">👁️</span></div>
+            <div class="relative mb-3"><input type="password" id="new-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="新密码"><span id="toggle-new" class="password-eye">👁️</span></div>
+            <div class="relative mb-4"><input type="password" id="confirm-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="确认新密码"><span id="toggle-confirm" class="password-eye">👁️</span></div>
+            <div class="flex gap-3"><button id="cancel-change-btn" class="flex-1 py-2 rounded-xl border">取消</button><button id="confirm-change-btn" class="flex-1 py-2 rounded-xl bg-purple-600 text-white">确认更换</button></div>
+        </div>
+    </div>
+    <div id="global-lock" style="display: none;" class="lock-overlay">
+        <div class="text-center">
+            <div class="text-7xl">🔒</div>
+            <h2 class="text-3xl font-black">页面已封锁</h2>
+            <p>多次密码错误，请联系管理员</p>
+        </div>
+    </div>
+
+    <!-- 主游戏区 -->
+    <div class="flex-grow flex w-full overflow-hidden">
+        <aside class="w-1/4 bg-gradient-to-b from-blue-50 to-white flex flex-col p-4 border-r-4 border-blue-200/60">
+            <div class="flex flex-col items-center mb-2">
+                <div class="bg-blue-700 text-white px-5 py-1.5 rounded-full text-xs font-black">🐰 朱迪</div>
+                <div id="score1" class="text-7xl font-black text-blue-700">0</div>
+            </div>
+            <div class="flex-grow flex flex-col justify-center gap-3">
+                <div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-blue-300 min-h-[140px] flex items-center justify-center text-center">
+                    <p id="q1" class="text-slate-800 text-xl font-black">🐾 准备答题！</p>
+                </div>
+                <div id="opts1" class="grid gap-2.5"></div>
+                <div class="random-order-hint">✨ 选项顺序随机 ✨</div>
+            </div>
+        </aside>
+        <main class="flex-grow flex flex-col relative bg-gradient-to-b from-sky-50 via-white to-amber-50/30 overflow-hidden">
+            <div class="flex justify-center py-4">
+                <div class="bg-slate-900/90 backdrop-blur-sm px-10 py-3 rounded-3xl shadow-2xl"><span id="timer" class="text-5xl font-mono font-black text-white">--:--</span></div>
+            </div>
+            <div class="flex-grow flex flex-col items-center justify-center">
+                <div class="battlefield">
+                    <div class="fixed-center-dash"></div>
+                    <div id="rope-move-container" class="rope-container">
+                        <!-- 朱迪SVG -->
+                        <div id="char-blue" class="character idle-float" style="--base-rot: 5deg; margin-right: -8px;">
+                            <svg width="130" height="190" viewBox="0 0 200 270">
+                                <g transform="translate(100, 65)">
+                                    <path d="M-30 -50 C-45 -120 -15 -130 -5 -20" fill="#cbd5e1" stroke="#1e3a8a" stroke-width="2.5" />
+                                    <path d="M30 -50 C45 -120 15 -130 5 -20" fill="#cbd5e1" stroke="#1e3a8a" stroke-width="2.5" />
+                                    <path d="M-45 25 C-70 35 -80 48 -75 58" stroke="#9ca3af" stroke-width="12" stroke-linecap="round" fill="none" />
+                                    <g transform="translate(-82, 60)">
+                                        <ellipse cx="0" cy="0" rx="12" ry="10" fill="#e2e8f0" stroke="#475569" stroke-width="1.5" />
+                                        <circle cx="-4" cy="-2" r="2.5" fill="#fcd34d" />
+                                        <circle cx="4" cy="-2" r="2.5" fill="#fcd34d" />
+                                        <circle cx="0" cy="5" r="3" fill="#fcd34d" />
+                                    </g>
+                                    <path d="M45 25 C70 35 80 48 75 58" stroke="#9ca3af" stroke-width="12" stroke-linecap="round" fill="none" />
+                                    <g transform="translate(82, 60)">
+                                        <ellipse cx="0" cy="0" rx="12" ry="10" fill="#e2e8f0" stroke="#475569" stroke-width="1.5" />
+                                        <circle cx="-4" cy="-2" r="2.5" fill="#fcd34d" />
+                                        <circle cx="4" cy="-2" r="2.5" fill="#fcd34d" />
+                                        <circle cx="0" cy="5" r="3" fill="#fcd34d" />
+                                    </g>
+                                </g>
+                                <ellipse cx="100" cy="105" rx="48" ry="43" fill="#e5e7eb" stroke="#1e3a8a" stroke-width="2.5" />
+                                <circle cx="80" cy="95" r="6" fill="#111827" />
+                                <circle cx="120" cy="95" r="6" fill="#111827" />
+                                <path d="M65 145 L135 145 L150 220 L50 220 Z" fill="#1e3a8a" stroke="#0f172a" stroke-width="2" />
+                                <rect x="50" y="205" width="100" height="18" fill="#111827" rx="5" />
+                                <circle cx="100" cy="170" r="9" fill="#fbbf24" />
+                                <path d="M135 170 Q180 175 200 185" stroke="#9ca3af" stroke-width="14" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                        <div class="relative">
+                            <div class="rope">
+                                <div class="rope-marker">
+                                    <div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 尼克SVG -->
+                        <div id="char-red" class="character idle-float" style="--base-rot: -5deg; margin-left: -8px;">
+                            <svg width="130" height="190" viewBox="0 0 200 270">
+                                <path d="M70 55 L55 -5 L85 45" fill="#ea580c" stroke="#431407" stroke-width="2.5" />
+                                <path d="M130 55 L145 -5 L115 45" fill="#ea580c" stroke="#431407" stroke-width="2.5" />
+                                <path d="M55 85 C30 95 25 110 38 115" stroke="#fb923c" stroke-width="12" stroke-linecap="round" fill="none" />
+                                <g transform="translate(35, 118)">
+                                    <ellipse cx="0" cy="0" rx="13" ry="11" fill="#fed7aa" stroke="#9a3412" stroke-width="1.5" />
+                                    <circle cx="-4" cy="-3" r="2.5" fill="#b45309" />
+                                    <circle cx="4" cy="-3" r="2.5" fill="#b45309" />
+                                    <circle cx="0" cy="5" r="3.5" fill="#b45309" />
+                                </g>
+                                <path d="M145 85 C170 95 175 110 162 115" stroke="#fb923c" stroke-width="12" stroke-linecap="round" fill="none" />
+                                <g transform="translate(165, 118)">
+                                    <ellipse cx="0" cy="0" rx="13" ry="11" fill="#fed7aa" stroke="#9a3412" stroke-width="1.5" />
+                                    <circle cx="-4" cy="-3" r="2.5" fill="#b45309" />
+                                    <circle cx="4" cy="-3" r="2.5" fill="#b45309" />
+                                    <circle cx="0" cy="5" r="3.5" fill="#b45309" />
+                                </g>
+                                <path d="M50 105 Q100 55 150 105 Q165 145 100 155 Q35 145 50 105" fill="#fb923c" stroke="#7c2d12" stroke-width="2.5" />
+                                <circle cx="75" cy="100" r="5" fill="#1c1917" />
+                                <circle cx="125" cy="100" r="5" fill="#1c1917" />
+                                <ellipse cx="100" cy="120" rx="6" ry="4" fill="#292524" />
+                                <rect x="65" y="155" width="75" height="85" rx="12" fill="#84cc16" stroke="#365314" stroke-width="2.5" />
+                                <polygon points="100,155 92,180 100,200 108,180" fill="#facc15" />
+                                <path d="M65 175 Q25 175 -5 185" stroke="#fb923c" stroke-width="14" stroke-linecap="round" fill="none" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div id="status-label" class="mb-4 px-12 py-3 bg-white/90 backdrop-blur-sm shadow-xl rounded-full font-black text-slate-800 uppercase tracking-[0.2em] border-2 border-slate-200 text-sm">⚡ 拔河对战 · 经典角色 ⚡</div>
+            </div>
+            <div id="game-over" class="hidden absolute inset-0 bg-white/98 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6">
+                <h2 id="winner-text" class="text-7xl font-black mb-2">WINNER</h2>
+                <div id="final-stats" class="text-3xl font-black mb-6">0:0</div>
+                <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-3xl">
+                        <h4 class="font-black text-blue-700">🐰 朱迪的答题卡</h4>
+                        <div id="judy-report" class="space-y-2 text-left max-h-72 overflow-auto"></div>
+                    </div>
+                    <div class="bg-orange-50 p-4 rounded-3xl">
+                        <h4 class="font-black text-orange-700">🦊 尼克的答题卡</h4>
+                        <div id="nick-report" class="space-y-2 text-left max-h-72 overflow-auto"></div>
+                    </div>
+                </div>
+                <div class="flex gap-4"><button id="downloadPdfBtn" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black text-xl">📄 下载战报PDF</button><button id="playAgainBtn" class="bg-slate-900 text-white px-10 py-3 rounded-2xl font-black text-xl opacity-50 cursor-not-allowed" disabled>✨ 再战一局 ✨</button></div>
+                <p class="text-xs text-slate-400 mt-4">下载PDF后即可再次游戏</p>
+            </div>
+        </main>
+        <aside class="w-1/4 bg-gradient-to-b from-orange-50 to-white flex flex-col p-4 border-l-4 border-orange-200/60 text-right">
+            <div class="flex flex-col items-center mb-2">
+                <div class="bg-orange-600 text-white px-5 py-1.5 rounded-full text-xs font-black">🦊 尼克</div>
+                <div id="score2" class="text-7xl font-black text-orange-600">0</div>
+            </div>
+            <div class="flex-grow flex flex-col justify-center gap-3">
+                <div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-orange-300 min-h-[140px] flex items-center justify-center">
+                    <p id="q2" class="text-slate-800 text-xl font-black">🦊 来吧！</p>
+                </div>
+                <div id="opts2" class="grid gap-2.5"></div>
+                <div class="random-order-hint">✨ 选项顺序随机 ✨</div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        (function() {
+            "use strict";
+
+            // ========== 文本规范化 ==========
+            function normalizeText(str) {
+                if (!str) return '';
+                let s = String(str);
+                s = s.replace(/[\u200B-\u200D\uFEFF]/g, '');
+                s = s.replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+                s = s.replace(/　/g, ' ');
+                s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+                s = s.replace(/\s+/g, ' ');
+                return s.trim();
+            }
+
+            function isAnswerEqual(userAns, correctAns) {
+                return normalizeText(userAns) === normalizeText(correctAns);
+            }
+
+            // ========== 默认题库（15道环保与科学题） ==========
+            const DEFAULT_QUESTIONS = [
+                { "q": "太阳可以提供我们什么？", "a": "衣服", "b": "玩具", "c": "光和热", "d": "冰淇淋", "correct": "光和热" },
+                { "q": "在马来西亚，哪种天气最常见？", "a": "下雪", "b": "阳光充足", "c": "结冰", "d": "龙卷风", "correct": "阳光充足" },
+                { "q": "什么东西在天空中吹动，可以转动大风车？", "a": "雨", "b": "云", "c": "风", "d": "鸟", "correct": "风" },
+                { "q": "大海里的水一波一波地动，这叫什么？", "a": "游泳", "b": "海浪", "c": "喝水", "d": "冲凉", "correct": "海浪" },
+                { "q": "什么是可更新能源？", "a": "很快用完的东西", "b": "不会用完的自然能源", "c": "很难找的东西", "d": "垃圾桶", "correct": "不会用完的自然能源" },
+                { "q": "哪种东西不是来自大自然的能源？", "a": "太阳", "b": "风", "c": "塑料袋", "d": "运行的水", "correct": "塑料袋" },
+                { "q": "太阳能板（Solar Panel）是用来做什么的？", "a": "收集阳光发电", "b": "挡雨", "c": "煮饭", "d": "照镜子", "correct": "收集阳光发电" },
+                { "q": "水力发电是利用什么来发电？", "a": "泥土", "b": "流动的水", "c": "木头", "d": "石头", "correct": "流动的水" },
+                { "q": "为什么我们要节约用电？", "a": "为了好玩", "b": "为了保护地球", "c": "为了浪费钱", "d": "为了让天变黑", "correct": "为了保护地球" },
+                { "q": "如果我们一直浪费石油，石油会怎样？", "a": "越来越多", "b": "会用完", "c": "变成水", "d": "不会变", "correct": "会用完" },
+                { "q": "哪种能源是比较干净、不污染空气的？", "a": "黑烟", "b": "煤炭", "c": "太阳能", "d": "废气", "correct": "太阳能" },
+                { "q": "大风车（风力发电机）通常建在什么地方？", "a": "房间里", "b": "风很大的地方", "c": "地洞里", "d": "电影院", "correct": "风很大的地方" },
+                { "q": "植物和动物的废料可以变成能源吗？", "a": "可以", "b": "不可以", "c": "不知道", "d": "没可能", "correct": "可以" },
+                { "q": "为了让空气更清新，我们应该支持什么？", "a": "烧垃圾", "b": "种树和用绿能源", "c": "排黑烟", "d": "砍树", "correct": "种树和用绿能源" },
+                { "q": "地球的深处其实是很热的，对吗？", "a": "对", "b": "不对", "c": "很冷", "d": "像冰块", "correct": "对" }
+            ];
+
+            // ========== 密码管理（完整功能） ==========
+            let passwordUnlocked = false,
+                remainingAttempts = 5,
+                isWaiting = false,
+                waitTimeout = null,
+                pendingModalId = null,
+                globalLocked = false;
+            let currentPassword = localStorage.getItem('zootopia_admin_pwd') || "0987";
+
+            function savePasswordToLocal(pwd) { localStorage.setItem('zootopia_admin_pwd', pwd);
+                currentPassword = pwd; }
+
+            function processWrongPassword() { if (globalLocked) return;
+                remainingAttempts--;
+                updateAttemptsDisplay(); if (remainingAttempts <= 0) permanentLock();
+                else startWaitPenalty(5); }
+
+            function startWaitPenalty(seconds) { if (isWaiting) return;
+                isWaiting = true;
+                let remain = seconds;
+                const updateTimer = () => { const span = document.getElementById('wait-timer'); if (span) span.innerText =
+                        `⏳ 等待 ${remain}s`; if (remain <= 0) clearWaitState();
+                    else { waitTimeout = setTimeout(() => { remain--;
+                        updateTimer(); }, 1000); } };
+                updateTimer(); }
+
+            function clearWaitState() { if (waitTimeout) clearTimeout(waitTimeout);
+                waitTimeout = null;
+                isWaiting = false;
+                const w = document.getElementById('wait-timer'); if (w) w.innerText = ''; document.getElementById(
+                    'confirm-pwd-btn').disabled = false;
+                document.getElementById('password-input').disabled = false;
+                document.getElementById('confirm-change-btn').disabled = false; }
+
+            function updateAttemptsDisplay() { const a = document.getElementById('attempts-left'); if (a) a.innerText =
+                    `剩余次数: ${remainingAttempts}`; if (remainingAttempts <= 0) permanentLock(); }
+
+            function permanentLock() { if (globalLocked) return;
+                globalLocked = true;
+                passwordUnlocked = false;
+                document.getElementById('global-lock').style.display = 'flex'; ['timeBtn', 'quizBtn', 'changePwdBtn',
+                    'generateHtmlBtn', 'startBtn', 'resetBtn'
+                ].forEach(id => { const btn = document.getElementById(id); if (btn) btn.disabled = true; }); }
+
+            function verifyPasswordAndUnlock(inputPwd, onSuccess) { if (globalLocked) return false; if (isWaiting) { alert(
+                        "等待惩罚结束"); return false; } if (inputPwd === currentPassword) { remainingAttempts = 5;
+                    updateAttemptsDisplay();
+                    passwordUnlocked = true;
+                    clearWaitState(); if (onSuccess) onSuccess(); return true; } else { processWrongPassword(); return false; } }
+
+            function showPasswordModal(modalId) { if (globalLocked) return;
+                pendingModalId = modalId;
+                document.getElementById('password-modal').style.display = 'flex';
+                document.getElementById('password-input').value = ''; }
+
+            function closePasswordModal() { document.getElementById('password-modal').style.display = 'none';
+                pendingModalId = null; }
+
+            function handlePasswordConfirm() { const entered = document.getElementById('password-input').value;
+                verifyPasswordAndUnlock(entered, () => { document.getElementById('password-modal').style.display = 'none'; if (
+                        pendingModalId) { document.getElementById(pendingModalId).style.display = 'flex';
+                        pendingModalId = null; } }); }
+
+            function openChangePwdModal() { if (globalLocked) return; if (!passwordUnlocked) { showPasswordModal(
+                    'change-pwd-modal'); return; } document.getElementById('change-pwd-modal').style.display = 'flex'; }
+
+            function closeChangePwdModal() { document.getElementById('change-pwd-modal').style.display = 'none'; }
+
+            function handleChangePassword() { if (globalLocked) return; if (isWaiting) { alert("请等待"); return; } const cur =
+                    document.getElementById('current-pwd').value,
+                    newp = document.getElementById('new-pwd').value,
+                    conf = document.getElementById('confirm-pwd').value; if (cur !== currentPassword) {
+                    processWrongPassword();
+                    alert("当前密码错误"); return; } if (!newp || newp.length < 4) { alert("新密码至少4位"); return; } if (newp !==
+                    conf) { alert("不一致"); return; }
+                savePasswordToLocal(newp);
+                alert("修改成功");
+                closeChangePwdModal();
+                passwordUnlocked = true; }
+            document.getElementById('confirm-pwd-btn').onclick = handlePasswordConfirm;
+            document.getElementById('cancel-pwd-btn').onclick = closePasswordModal;
+            document.getElementById('toggle-password').onclick = () => { let inp = document.getElementById('password-input');
+                inp.type = inp.type === 'password' ? 'text' : 'password'; };
+            document.getElementById('toggle-current').onclick = () => { let inp = document.getElementById('current-pwd'); inp
+                    .type = inp.type === 'password' ? 'text' : 'password'; };
+            document.getElementById('toggle-new').onclick = () => { let inp = document.getElementById('new-pwd');
+                inp.type = inp.type === 'password' ? 'text' : 'password'; };
+            document.getElementById('toggle-confirm').onclick = () => { let inp = document.getElementById('confirm-pwd');
+                inp.type = inp.type === 'password' ? 'text' : 'password'; };
+            document.getElementById('confirm-change-btn').onclick = handleChangePassword;
+            document.getElementById('cancel-change-btn').onclick = closeChangePwdModal;
+            document.getElementById('changePwdBtn').onclick = openChangePwdModal;
+            document.getElementById('timeBtn').onclick = () => { if (globalLocked) return; if (passwordUnlocked) document
+                    .getElementById('time-modal').style.display = 'flex';
+                else showPasswordModal('time-modal'); };
+            document.getElementById('quizBtn').onclick = () => { if (globalLocked) return; if (passwordUnlocked) { document
+                    .getElementById('ques-modal').style.display = 'flex';
+                    refreshTableDisplay(); } else showPasswordModal('ques-modal'); };
+
+            // ========== 时长管理 ==========
+            const timeInput = document.getElementById('setup-time');
+
+            function getStoredDuration() {
+                const saved = localStorage.getItem('zootopia_game_duration');
+                if (saved) { let parsed = parseInt(saved); if (!isNaN(parsed) && parsed >= 10 && parsed <= 600) return parsed; }
+                return 240;
+            }
+
+            function setDurationAndSave(seconds) {
+                let val = Math.min(600, Math.max(10, seconds));
+                localStorage.setItem('zootopia_game_duration', val);
+                timeInput.value = val;
+                if (gameState && !gameState.active) {
+                    gameState.maxTime = val;
+                    gameState.timeLeft = val;
+                    updateTimerDisplay();
+                }
+            }
+
+            function loadSavedTime() {
+                let defaultVal = getStoredDuration();
+                timeInput.value = defaultVal;
+                if (gameState && !gameState.active) {
+                    gameState.maxTime = defaultVal;
+                    gameState.timeLeft = defaultVal;
+                    updateTimerDisplay();
+                }
+            }
+            document.getElementById('saveTimeBtn').onclick = () => {
+                let val = parseInt(timeInput.value);
+                if (isNaN(val)) val = getStoredDuration();
+                val = Math.min(600, Math.max(10, val));
+                setDurationAndSave(val);
+                document.getElementById('time-modal').style.display = 'none';
+                alert(`时长已设为 ${val} 秒，已自动保存。`);
+            };
+
+            // ========== 游戏状态 ==========
+            let gameState = { pool: [], team1Remaining: [], team2Remaining: [], score1: 0, score2: 0, timeLeft: 240,
+                maxTime: 240, active: false, ropePos: 0, timerInterval: null, gameLog: { team1: [], team2: [] },
+                pendingTimeouts: [] };
+
+            const domGame = {
+                timer: document.getElementById('timer'),
+                q1: document.getElementById('q1'),
+                q2: document.getElementById('q2'),
+                o1: document.getElementById('opts1'),
+                o2: document.getElementById('opts2'),
+                rope: document.getElementById('rope-move-container'),
+                gameOver: document.getElementById('game-over'),
+                winText: document.getElementById('winner-text'),
+                finalRes: document.getElementById('final-stats'),
+                score1: document.getElementById('score1'),
+                score2: document.getElementById('score2'),
+                charJudy: document.getElementById('char-blue'),
+                charNick: document.getElementById('char-red'),
+                tableBody: document.getElementById('questions-table-body'),
+                judyReport: document.getElementById('judy-report'),
+                nickReport: document.getElementById('nick-report'),
+                downloadBtn: document.getElementById('downloadPdfBtn'),
+                playAgainBtn: document.getElementById('playAgainBtn')
+            };
+
+            function escapeHtml(s) { if (!s) return ''; return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;',
+                    '>': '&gt;' }[c])); }
+
+            // 题库表格操作
+            function addQuestionRow(prefill = null) {
+                const row = document.createElement('tr');
+                row.className = 'border-b';
+                const vals = prefill || { q: '', a: '', b: '', c: '', d: '', correct: '' };
+                row.innerHTML =
+                    `<td class="p-2"><input type="text" value="${escapeHtml(vals.q)}" class="question-input w-full"></td>
+             <td class="p-2"><input type="text" value="${escapeHtml(vals.a)}" class="opt-a w-full"></td>
+             <td class="p-2"><input type="text" value="${escapeHtml(vals.b)}" class="opt-b w-full"></td>
+             <td class="p-2"><input type="text" value="${escapeHtml(vals.c)}" class="opt-c w-full"></td>
+             <td class="p-2"><input type="text" value="${escapeHtml(vals.d)}" class="opt-d w-full"></td>
+             <td class="p-2"><select class="correct-select w-full"></select></td>
+             <td class="p-2 text-center"><button class="del-row text-red-400 font-bold text-lg">🗑️</button></td>`;
+                domGame.tableBody.appendChild(row);
+                const select = row.querySelector('.correct-select');
+                const inps = [row.querySelector('.opt-a'), row.querySelector('.opt-b'), row.querySelector('.opt-c'), row
+                    .querySelector('.opt-d')
+                ];
+                const updateSelect = () => {
+                    const opts = inps.map(inp => normalizeText(inp.value));
+                    select.innerHTML = opts.map((opt, idx) =>
+                        `<option value="${escapeHtml(opt)}">${String.fromCharCode(65+idx)}: ${escapeHtml(opt)}</option>`
+                    ).join('');
+                    const normalizedCorrect = normalizeText(vals.correct);
+                    if (opts.includes(normalizedCorrect)) select.value = normalizedCorrect;
+                };
+                inps.forEach(i => i.addEventListener('input', updateSelect));
+                updateSelect();
+                row.querySelector('.del-row').onclick = () => row.remove();
+                return row;
+            }
+
+            function resetDefaultTable() { domGame.tableBody.innerHTML = '';
+                DEFAULT_QUESTIONS.forEach(q => addQuestionRow({ q: q.q, a: q.a, b: q.b, c: q.c, d: q.d, correct: q.correct })); }
+
+            function collectTableData() {
+                return Array.from(domGame.tableBody.querySelectorAll('tr')).map(row => {
+                    let opts = [
+                        normalizeText(row.querySelector('.opt-a').value),
+                        normalizeText(row.querySelector('.opt-b').value),
+                        normalizeText(row.querySelector('.opt-c').value),
+                        normalizeText(row.querySelector('.opt-d').value)
+                    ];
+                    return {
+                        q: normalizeText(row.querySelector('.question-input').value),
+                        options: opts,
+                        correct: normalizeText(row.querySelector('.correct-select').value)
+                    };
+                }).filter(q => q.q && q.options.every(o => o));
+            }
+
+            function refreshTableDisplay() { if (domGame.tableBody.children.length === 0) resetDefaultTable(); }
+
+            function saveTableAndClose() { gameState.pool = collectTableData(); if (gameState.pool.length === 0) {
+                    resetDefaultTable();
+                    gameState.pool = collectTableData(); } document.getElementById('ques-modal').style.display = 'none';
+                alert("题库已保存"); }
+            document.getElementById('saveQuesBtn').onclick = saveTableAndClose;
+            document.getElementById('addRowBtn').onclick = () => addQuestionRow();
+            document.getElementById('resetTableBtn').onclick = resetDefaultTable;
+            document.getElementById('batchOpenBtn').onclick = () => document.getElementById('batch-panel').classList.remove(
+                'hidden');
+            document.getElementById('closeBatchBtn').onclick = () => document.getElementById('batch-panel').classList.add(
+            'hidden');
+            document.getElementById('clearBatchBtn').onclick = () => document.getElementById('batch-text').value = '';
+            document.getElementById('importBatchBtn').onclick = () => {
+                const raw = document.getElementById('batch-text').value;
+                if (!raw.trim()) return alert("粘贴数据");
+                const lines = raw.split(/\r?\n/);
+                let added = 0;
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue;
+                    let parts = line.split('|').map(s => s.trim());
+                    if (parts.length < 6) { alert(`字段不足: ${line}`); continue; }
+                    let [q, a, b, c, d, correct] = parts;
+                    if (!q || !a || !b || !c || !d || !correct) continue;
+                    if (![a, b, c, d].includes(correct)) { alert(`正确选项错误: ${correct}`); continue; }
+                    addQuestionRow({ q, a, b, c, d, correct });
+                    added++;
+                }
+                alert(`批量添加 ${added} 题`);
+                document.getElementById('batch-text').value = '';
+                document.getElementById('batch-panel').classList.add('hidden');
+            };
+
+            // 拔河核心
+            const PULL_STEP = 22,
+                MAX_SHIFT = 150;
+
+            function clearAllTimeouts() { gameState.pendingTimeouts.forEach(id => clearTimeout(id));
+                gameState.pendingTimeouts = []; }
+
+            function addTimeout(fn, delay) { const id = setTimeout(() => { fn();
+                    gameState.pendingTimeouts = gameState.pendingTimeouts.filter(t => t !== id); },
+                delay);
+                gameState.pendingTimeouts.push(id); return id; }
+
+            function updateScoresAndRope() { domGame.score1.textContent = gameState.score1;
+                domGame.score2.textContent = gameState.score2;
+                gameState.ropePos = Math.max(-MAX_SHIFT, Math.min(MAX_SHIFT, gameState.ropePos));
+                domGame.rope.style.transform = `translateX(${gameState.ropePos}px)`; if (gameState.active && Math.abs(gameState
+                        .ropePos) >= MAX_SHIFT) endGame(); }
+
+            function formatTime(sec) { return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; }
+
+            function updateTimerDisplay() { domGame.timer.textContent = formatTime(gameState.timeLeft); }
+
+            function animatePull(el) { el.classList.remove('idle-float');
+                el.classList.add('pull-anim');
+                addTimeout(() => { if (el) { el.classList.remove('pull-anim');
+                        el.classList.add('idle-float'); } }, 400); }
+
+            function takeRandomQuestion(team) { const remaining = team === 1 ? gameState.team1Remaining : gameState
+                    .team2Remaining; if (!remaining.length) return null;
+                const idx = Math.floor(Math.random() * remaining.length);
+                const q = remaining[idx];
+                remaining.splice(idx, 1); return q; }
+
+            function renderQuestion(team) {
+                if (!gameState.active) return;
+                const item = takeRandomQuestion(team);
+                if (!item) { const qBox = team === 1 ? domGame.q1 : domGame.q2;
+                    qBox.textContent = team === 1 ? "🐰 朱迪已完成所有题目" : "🦊 尼克已完成所有题目"; (team === 1 ? domGame.o1 : domGame.o2)
+                        .innerHTML = '<div class="text-center p-4">✨ 已答完 ✨</div>'; if (gameState.active && gameState
+                        .team1Remaining.length === 0 && gameState.team2Remaining.length === 0) endGame(); return; }
+                const qBox = team === 1 ? domGame.q1 : domGame.q2,
+                    optsBox = team === 1 ? domGame.o1 : domGame.o2;
+                qBox.textContent = item.q;
+                optsBox.innerHTML = '';
+                const shuffled = [...item.options].sort(() => Math.random() - 0.5);
+                shuffled.forEach(opt => { const btn = document.createElement('button');
+                    btn.className =
+                        'choice-btn w-full p-3.5 rounded-2xl font-bold text-sm bg-white border-b-4 border-slate-200 hover:bg-slate-50';
+                    btn.textContent = opt;
+                    btn.onclick = () => handleAnswer(team, opt, item.correct, btn, item.q);
+                    optsBox.appendChild(btn); });
+            }
+
+            function handleAnswer(team, selectedOpt, correctAnswer, btn, questionText) {
+                if (!gameState.active) return;
+                const optsBox = team === 1 ? domGame.o1 : domGame.o2;
+                optsBox.querySelectorAll('button').forEach(b => b.disabled = true);
+                const isCorrect = isAnswerEqual(selectedOpt, correctAnswer);
+                gameState.gameLog[team === 1 ? 'team1' : 'team2'].push({ question: questionText, userAnswer: selectedOpt,
+                    correctAnswer: correctAnswer, isCorrect });
+                if (isCorrect) {
+                    btn.className =
+                        `choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white border-b-4 ${team===1?'bg-blue-500 border-blue-700':'bg-orange-500 border-orange-700'}`;
+                    if (team === 1) { gameState.score1 += 10;
+                        gameState.ropePos -= PULL_STEP;
+                        animatePull(domGame.charJudy); } else { gameState.score2 += 10;
+                        gameState.ropePos += PULL_STEP;
+                        animatePull(domGame.charNick); }
+                    updateScoresAndRope();
+                    addTimeout(() => renderQuestion(team), 500);
+                } else {
+                    btn.className =
+                        'choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-red-500 border-red-700';
+                    const correctBtn = Array.from(optsBox.querySelectorAll('button')).find(b => isAnswerEqual(b.textContent,
+                        correctAnswer));
+                    if (correctBtn) correctBtn.className =
+                        'choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-green-500 border-green-700 pull-anim';
+                    addTimeout(() => renderQuestion(team), 1500);
+                }
+                addTimeout(() => { if (gameState.active && gameState.team1Remaining.length === 0 && gameState.team2Remaining
+                        .length === 0) endGame(); }, 100);
+            }
+
+            function disableAdminButtons(disabled) { ['timeBtn', 'quizBtn', 'changePwdBtn', 'generateHtmlBtn'].forEach(id => {
+                    const btn = document.getElementById(id); if (btn) disabled ? btn.classList.add('disabled-btn') :
+                        btn.classList.remove('disabled-btn'); }); }
+
+            function endGame() {
+                if (!gameState.active) return;
+                gameState.active = false;
+                clearInterval(gameState.timerInterval);
+                clearAllTimeouts();
+                disableAdminButtons(false);
+                const winner = gameState.ropePos < 0 ? 'JUDY' : (gameState.ropePos > 0 ? 'NICK' : 'DRAW');
+                domGame.winText.textContent = winner === 'DRAW' ? '🤝 平局！' : (winner === 'JUDY' ? '🐰 朱迪胜利！' : '🦊 尼克胜利！');
+                domGame.finalRes.textContent = `${gameState.score1} : ${gameState.score2}`;
+                const renderReport = (teamKey, container) => {
+                    const logs = gameState.gameLog[teamKey];
+                    if (!logs.length) { container.innerHTML = '<p class="text-center text-slate-400">无记录</p>'; return; }
+                    container.innerHTML = '';
+                    logs.forEach((log, idx) => {
+                        const div = document.createElement('div');
+                        div.className =
+                            `p-3 rounded-xl mb-2 text-xs border-l-4 ${log.isCorrect ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`;
+                        div.innerHTML =
+                            `<p class="font-bold">${idx+1}. ${escapeHtml(log.question)}</p>
+                 <p>你的答案: ${escapeHtml(log.userAnswer)} ${log.isCorrect ? '✓' : '✗'}</p>
+                 ${!log.isCorrect ? `<p class="text-slate-500">正确答案: ${escapeHtml(log.correctAnswer)}</p>` : ''}`;
+                        container.appendChild(div);
+                    });
+                };
+                renderReport('team1', domGame.judyReport);
+                renderReport('team2', domGame.nickReport);
+                domGame.gameOver.classList.remove('hidden');
+                domGame.playAgainBtn.disabled = true;
+                domGame.playAgainBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                domGame.downloadBtn.onclick = downloadPDFReport;
+            }
+
+            async function downloadPDFReport() {
+                const winnerText = domGame.winText.innerText;
+                const scoreText = domGame.finalRes.innerText;
+                const judyContainer = document.getElementById('judy-report');
+                const nickContainer = document.getElementById('nick-report');
+                const judyClone = judyContainer.cloneNode(true);
+                const nickClone = nickContainer.cloneNode(true);
+                judyClone.style.maxHeight = 'none';
+                judyClone.style.overflow = 'visible';
+                nickClone.style.maxHeight = 'none';
+                nickClone.style.overflow = 'visible';
+
+                const container = document.createElement('div');
+                container.style.fontFamily = "'Inter', sans-serif";
+                container.style.padding = '2rem';
+                container.style.backgroundColor = 'white';
+                container.style.maxWidth = '1000px';
+                container.style.margin = '0 auto';
+
+                const headerDiv = document.createElement('div');
+                headerDiv.style.textAlign = 'center';
+                headerDiv.style.marginBottom = '2rem';
+                headerDiv.innerHTML = `
+            <h1 style="font-size:2.5rem; font-weight:900;">🐰 vs 🦊 拔河战报</h1>
+            <p style="color:#475569;">${new Date().toLocaleString()}</p>
+            <div style="background:#f1f5f9; display:inline-block; padding:0.5rem 1.5rem; border-radius:60px; margin-top:0.6rem;">
+                <span style="font-weight:900;">🏆 ${winnerText} ${scoreText}</span>
+            </div>
+        `;
+                container.appendChild(headerDiv);
+
+                const flexRow = document.createElement('div');
+                flexRow.style.display = 'flex';
+                flexRow.style.flexWrap = 'wrap';
+                flexRow.style.gap = '1.5rem';
+                flexRow.style.justifyContent = 'center';
+
+                const judyCard = document.createElement('div');
+                judyCard.style.flex = '1';
+                judyCard.style.minWidth = '280px';
+                judyCard.style.backgroundColor = '#eff6ff';
+                judyCard.style.borderRadius = '24px';
+                judyCard.style.padding = '1rem';
+                judyCard.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                const judyTitle = document.createElement('h4');
+                judyTitle.style.fontWeight = '900';
+                judyTitle.style.color = '#1e3a8a';
+                judyTitle.style.fontSize = '1.25rem';
+                judyTitle.style.marginBottom = '0.75rem';
+                judyTitle.innerHTML = '🐰 朱迪的答题卡';
+                judyCard.appendChild(judyTitle);
+                judyCard.appendChild(judyClone);
+
+                const nickCard = document.createElement('div');
+                nickCard.style.flex = '1';
+                nickCard.style.minWidth = '280px';
+                nickCard.style.backgroundColor = '#fff7ed';
+                nickCard.style.borderRadius = '24px';
+                nickCard.style.padding = '1rem';
+                nickCard.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                const nickTitle = document.createElement('h4');
+                nickTitle.style.fontWeight = '900';
+                nickTitle.style.color = '#c2410c';
+                nickTitle.style.fontSize = '1.25rem';
+                nickTitle.style.marginBottom = '0.75rem';
+                nickTitle.innerHTML = '🦊 尼克的答题卡';
+                nickCard.appendChild(nickTitle);
+                nickCard.appendChild(nickClone);
+
+                flexRow.appendChild(judyCard);
+                flexRow.appendChild(nickCard);
+                container.appendChild(flexRow);
+
+                document.body.appendChild(container);
+                try {
+                    await html2pdf().set({
+                        margin: [0.5, 0.5, 0.5, 0.5],
+                        filename: `拔河战报_${Date.now()}.pdf`,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+                        jsPDF: { unit: 'in', format: 'a4' }
+                    }).from(container).save();
+                    domGame.playAgainBtn.disabled = false;
+                    domGame.playAgainBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    alert("PDF已保存，可再次游戏");
+                } catch (e) {
+                    alert("生成失败: " + e);
+                } finally {
+                    document.body.removeChild(container);
+                }
+            }
+
+            function applyAndStart() {
+                if (globalLocked) return;
+                if (gameState.active) resetGame(true);
+                clearAllTimeouts(); if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+                let currentMax = parseInt(timeInput.value);
+                if (isNaN(currentMax)) currentMax = getStoredDuration();
+                currentMax = Math.min(600, Math.max(10, currentMax));
+                gameState.maxTime = currentMax;
+                gameState.timeLeft = currentMax;
+                if (!gameState.pool.length) { resetDefaultTable();
+                    gameState.pool = collectTableData(); }
+                if (gameState.pool.length === 0) { alert("题库为空"); return; }
+                for (let q of gameState.pool) if (!q.options.includes(q.correct)) q.correct = q.options[0];
+                gameState.team1Remaining = gameState.pool.map(q => ({ ...q, options: [...q.options] }));
+                gameState.team2Remaining = gameState.pool.map(q => ({ ...q, options: [...q.options] }));
+                gameState.score1 = 0;
+                gameState.score2 = 0;
+                gameState.ropePos = 0;
+                gameState.gameLog = { team1: [], team2: [] };
+                gameState.active = true;
+                domGame.gameOver.classList.add('hidden');
+                updateScoresAndRope();
+                updateTimerDisplay();
+                disableAdminButtons(true);
+                renderQuestion(1);
+                renderQuestion(2);
+                gameState.timerInterval = setInterval(() => { if (!gameState.active) return;
+                    gameState.timeLeft--;
+                    updateTimerDisplay(); if (gameState.timeLeft <= 0) { clearInterval(gameState.timerInterval);
+                        endGame(); } }, 1000);
+            }
+
+            function resetGame() { if (globalLocked) return;
+                gameState.active = false;
+                clearInterval(gameState.timerInterval);
+                clearAllTimeouts();
+                disableAdminButtons(false);
+                domGame.gameOver.classList.add('hidden');
+                domGame.score1.textContent = '0';
+                domGame.score2.textContent = '0';
+                domGame.q1.textContent = "🐾 准备好了吗？";
+                domGame.q2.textContent = "🦊 来吧！";
+                domGame.o1.innerHTML = '';
+                domGame.o2.innerHTML = '';
+                domGame.rope.style.transform = 'translateX(0)';
+                gameState.score1 = 0;
+                gameState.score2 = 0;
+                gameState.ropePos = 0;
+                gameState.timeLeft = gameState.maxTime;
+                gameState.gameLog = { team1: [], team2: [] };
+                updateTimerDisplay(); if (gameState.pool.length) { gameState.team1Remaining = gameState.pool.map(q => ({ ...q,
+                        options: [...q.options] }));
+                    gameState.team2Remaining = gameState.pool.map(q => ({ ...q, options: [...q.options] })); } }
+            document.getElementById('startBtn').onclick = applyAndStart;
+            document.getElementById('resetBtn').onclick = resetGame;
+            domGame.playAgainBtn.onclick = () => { if (!domGame.playAgainBtn.disabled) resetGame();
+                else alert("请先下载战报PDF"); };
+
+            // ========== 生成独立HTML（修复了resetDefaultTable兼容性） ==========
+            function generateStandaloneHTML() {
+                const currentQuestions = collectTableData();
+                if (currentQuestions.length === 0) {
+                    alert("题库为空，无法生成！");
+                    return;
+                }
+                const currentDuration = Math.min(600, Math.max(10, parseInt(timeInput.value) || getStoredDuration()));
+                const currentPasswordValue = currentPassword;
+
+                const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐰 疯狂动物城·拔河对战（独立版）🦊</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body { font-family: 'Inter', sans-serif; background-color: #e0f2fe; height: 100vh; width: 100vw; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+        .admin-bar { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 2px solid #bae6fd; z-index: 100; flex-shrink: 0; }
+        .choice-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .choice-btn:active { transform: scale(0.97); }
+        .battlefield { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; }
+        .rope-container { transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 10; overflow: visible; gap: 0; }
+        .rope { height: 22px; background: #795548; background-image: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent); background-size: 24px 24px; border-radius: 40px; box-shadow: 0 6px 12px rgba(0,0,0,0.25); border: 3px solid #3e2723; width: 380px; flex-shrink: 0; position: relative; }
+        .fixed-center-dash { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 6px; height: 300px; background: repeating-linear-gradient(to bottom, #64748b 0px, #64748b 12px, transparent 12px, transparent 24px); z-index: 15; pointer-events: none; opacity: 0.7; }
+        .rope-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; pointer-events: none; }
+        .rope-marker > div { width: 12px; height: 110px; background: linear-gradient(to bottom, #fde047, #f59e0b); border: 4px solid white; border-radius: 20px; }
+        @keyframes pull-feedback { 0% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } 100% { transform: scale(1) rotate(0deg); } }
+        .pull-anim { animation: pull-feedback 0.3s ease-out; }
+        .character { transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1); filter: drop-shadow(0 12px 18px rgba(0,0,0,0.2)); flex-shrink: 0; width: 140px; display: flex; justify-content: center; align-items: center; }
+        .character svg { width: 130px; height: auto; pointer-events: none; }
+        .modal-overlay { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); display: none; position: fixed; inset: 0; z-index: 1000; align-items: center; justify-content: center; }
+        @keyframes float { 0%, 100% { transform: translateY(0) rotate(var(--base-rot)); } 50% { transform: translateY(-8px) rotate(var(--base-rot)); } }
+        .idle-float { animation: float 4s infinite ease-in-out; }
+        .table-wrapper { max-height: 400px; overflow-y: auto; border-radius: 20px; border: 2px solid #e2e8f0; }
+        .edit-table th { background: #f8fafc; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; }
+        .batch-panel { background: #fefce8; border-radius: 1.5rem; padding: 1rem; margin-bottom: 1rem; border: 2px solid #fde047; }
+        .password-eye { cursor: pointer; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); user-select: none; }
+        .lock-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; backdrop-filter: blur(12px); }
+        .disabled-btn { opacity: 0.6; pointer-events: none; filter: grayscale(0.1); }
+        .random-order-hint { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; text-align: center; }
+    </style>
+</head>
+<body>
+    <header class="admin-bar p-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex gap-2">
+                <button id="timeBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">⏱ 时长</button>
+                <button id="quizBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">📚 题库</button>
+                <button id="changePwdBtn" class="px-4 py-1.5 bg-white border-2 border-purple-200 rounded-xl text-purple-700 font-bold text-sm hover:bg-purple-50 shadow-sm">🔑 改密码</button>
+                <button id="generateHtmlBtn" class="px-4 py-1.5 bg-white border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold text-sm hover:bg-emerald-50 shadow-sm">💾 生成HTML</button>
+            </div>
+            <div class="text-center"><h1 class="text-xl font-black text-slate-800 tracking-tight">ZOOTOPIA <span class="text-blue-600">TUG</span>·<span class="text-orange-500">WAR</span><span class="text-xs ml-1">⏱️ 独立版</span></h1></div>
+            <div class="flex gap-2">
+                <button id="resetBtn" class="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 border border-slate-200">🔄 重置</button>
+                <button id="startBtn" class="bg-blue-600 text-white py-1.5 px-7 rounded-xl font-black text-sm shadow-lg hover:bg-blue-700 transition">⚡ 开始对战</button>
+            </div>
+        </div>
+    </header>
+    <div id="time-modal" class="modal-overlay"><div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-80 border-4 border-blue-100"><h3 class="font-black text-slate-800 mb-4 text-center text-2xl">⏳ 比赛时间 (10~600秒)</h3><input type="number" id="setup-time" value="${currentDuration}" min="10" max="600" step="5" class="w-full px-4 py-5 border-4 border-slate-100 rounded-3xl outline-none focus:border-blue-500 font-black text-center text-5xl text-slate-700"><button id="saveTimeBtn" class="w-full mt-6 bg-slate-800 text-white py-4 rounded-2xl font-black text-lg hover:bg-slate-900">确定并保存</button></div></div>
+    <div id="ques-modal" class="modal-overlay"><div class="bg-white p-6 rounded-[2.5rem] shadow-2xl w-full max-w-6xl border-4 border-orange-100 mx-4" style="max-height: 90vh; overflow-y: auto;"><div class="flex items-center justify-between mb-3 flex-wrap gap-2"><h3 class="font-black text-slate-800 text-2xl">📖 编辑题库</h3><div class="flex gap-2"><button id="batchOpenBtn" class="bg-indigo-500 text-white px-4 py-2 rounded-xl font-bold text-sm">📋 批量导入</button><button id="addRowBtn" class="bg-green-500 text-white px-4 py-2 rounded-xl font-bold text-sm">➕ 添加一行</button><button id="resetTableBtn" class="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl font-bold text-sm">🔄 恢复默认</button></div></div><div id="batch-panel" class="batch-panel hidden"><div class="flex justify-between mb-2"><span class="font-bold">📌 格式: 题目 | A | B | C | D | 正确答案</span><button id="closeBatchBtn" class="text-gray-500">✕</button></div><textarea id="batch-text" rows="4" class="w-full p-3 border-2 rounded-xl font-mono text-sm" placeholder="示例：太阳可以提供我们什么？|衣服|玩具|光和热|冰淇淋|光和热"></textarea><div class="flex justify-end gap-2 mt-3"><button id="clearBatchBtn" class="px-3 py-1 bg-gray-200 rounded-xl">清空</button><button id="importBatchBtn" class="px-4 py-1 bg-indigo-600 text-white rounded-xl">✨ 解析追加</button></div></div><div class="table-wrapper"><table class="edit-table w-full text-sm border-collapse"><thead class="sticky top-0 bg-slate-50"><tr><th class="p-2">题目</th><th class="p-2">A</th><th class="p-2">B</th><th class="p-2">C</th><th class="p-2">D</th><th class="p-2">正确答案</th><th class="p-2 w-12">操作</th></tr></thead><tbody id="questions-table-body"></tbody></table></div><div class="flex justify-end mt-5"><button id="saveQuesBtn" class="bg-orange-500 text-white px-8 py-3 rounded-2xl font-black shadow-md">💾 保存并关闭</button></div></div></div>
+    <div id="password-modal" class="modal-overlay" style="z-index: 1100;"><div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-indigo-200"><div class="text-center mb-4"><h3 class="font-black text-2xl">🔐 管理员验证</h3><p class="text-sm text-slate-500">请输入密码</p></div><div class="relative mb-3"><input type="password" id="password-input" class="w-full p-3 border-2 rounded-xl pr-10"><span id="toggle-password" class="password-eye">👁️</span></div><div class="flex justify-between text-sm mb-4"><span id="attempts-left" class="text-red-500 font-bold">剩余次数: 5</span><span id="wait-timer"></span></div><div class="flex gap-3"><button id="cancel-pwd-btn" class="flex-1 py-2 rounded-xl border">取消</button><button id="confirm-pwd-btn" class="flex-1 py-2 rounded-xl bg-indigo-600 text-white">确认</button></div></div></div>
+    <div id="change-pwd-modal" class="modal-overlay" style="z-index: 1100;"><div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-purple-200"><div class="text-center mb-4"><h3 class="font-black text-2xl">更换密码</h3></div><div class="relative mb-3"><input type="password" id="current-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="当前密码"><span id="toggle-current" class="password-eye">👁️</span></div><div class="relative mb-3"><input type="password" id="new-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="新密码"><span id="toggle-new" class="password-eye">👁️</span></div><div class="relative mb-4"><input type="password" id="confirm-pwd" class="w-full p-3 border rounded-xl pr-10" placeholder="确认新密码"><span id="toggle-confirm" class="password-eye">👁️</span></div><div class="flex gap-3"><button id="cancel-change-btn" class="flex-1 py-2 rounded-xl border">取消</button><button id="confirm-change-btn" class="flex-1 py-2 rounded-xl bg-purple-600 text-white">确认更换</button></div></div></div>
+    <div id="global-lock" style="display: none;" class="lock-overlay"><div class="text-center"><div class="text-7xl">🔒</div><h2 class="text-3xl font-black">页面已封锁</h2><p>多次密码错误，请联系管理员</p></div></div>
+    <div class="flex-grow flex w-full overflow-hidden">
+        <aside class="w-1/4 bg-gradient-to-b from-blue-50 to-white flex flex-col p-4 border-r-4 border-blue-200/60"><div class="flex flex-col items-center mb-2"><div class="bg-blue-700 text-white px-5 py-1.5 rounded-full text-xs font-black">🐰 朱迪</div><div id="score1" class="text-7xl font-black text-blue-700">0</div></div><div class="flex-grow flex flex-col justify-center gap-3"><div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-blue-300 min-h-[140px] flex items-center justify-center text-center"><p id="q1" class="text-slate-800 text-xl font-black">🐾 准备答题！</p></div><div id="opts1" class="grid gap-2.5"></div><div class="random-order-hint">✨ 选项顺序随机 ✨</div></div></aside>
+        <main class="flex-grow flex flex-col relative bg-gradient-to-b from-sky-50 via-white to-amber-50/30 overflow-hidden"><div class="flex justify-center py-4"><div class="bg-slate-900/90 backdrop-blur-sm px-10 py-3 rounded-3xl shadow-2xl"><span id="timer" class="text-5xl font-mono font-black text-white">--:--</span></div></div><div class="flex-grow flex flex-col items-center justify-center"><div class="battlefield"><div class="fixed-center-dash"></div><div id="rope-move-container" class="rope-container">
+            <div id="char-blue" class="character idle-float" style="--base-rot: 5deg; margin-right: -8px;">
+                <svg width="130" height="190" viewBox="0 0 200 270"><g transform="translate(100, 65)"><path d="M-30 -50 C-45 -120 -15 -130 -5 -20" fill="#cbd5e1" stroke="#1e3a8a" stroke-width="2.5"/><path d="M30 -50 C45 -120 15 -130 5 -20" fill="#cbd5e1" stroke="#1e3a8a" stroke-width="2.5"/><path d="M-45 25 C-70 35 -80 48 -75 58" stroke="#9ca3af" stroke-width="12" stroke-linecap="round" fill="none"/><g transform="translate(-82, 60)"><ellipse cx="0" cy="0" rx="12" ry="10" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/><circle cx="-4" cy="-2" r="2.5" fill="#fcd34d"/><circle cx="4" cy="-2" r="2.5" fill="#fcd34d"/><circle cx="0" cy="5" r="3" fill="#fcd34d"/></g><path d="M45 25 C70 35 80 48 75 58" stroke="#9ca3af" stroke-width="12" stroke-linecap="round" fill="none"/><g transform="translate(82, 60)"><ellipse cx="0" cy="0" rx="12" ry="10" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/><circle cx="-4" cy="-2" r="2.5" fill="#fcd34d"/><circle cx="4" cy="-2" r="2.5" fill="#fcd34d"/><circle cx="0" cy="5" r="3" fill="#fcd34d"/></g></g><ellipse cx="100" cy="105" rx="48" ry="43" fill="#e5e7eb" stroke="#1e3a8a" stroke-width="2.5"/><circle cx="80" cy="95" r="6" fill="#111827"/><circle cx="120" cy="95" r="6" fill="#111827"/><path d="M65 145 L135 145 L150 220 L50 220 Z" fill="#1e3a8a" stroke="#0f172a" stroke-width="2"/><rect x="50" y="205" width="100" height="18" fill="#111827" rx="5"/><circle cx="100" cy="170" r="9" fill="#fbbf24"/><path d="M135 170 Q180 175 200 185" stroke="#9ca3af" stroke-width="14" stroke-linecap="round" fill="none"/></svg>
+            </div>
+            <div class="relative"><div class="rope"><div class="rope-marker"><div></div></div></div></div>
+            <div id="char-red" class="character idle-float" style="--base-rot: -5deg; margin-left: -8px;">
+                <svg width="130" height="190" viewBox="0 0 200 270"><path d="M70 55 L55 -5 L85 45" fill="#ea580c" stroke="#431407" stroke-width="2.5"/><path d="M130 55 L145 -5 L115 45" fill="#ea580c" stroke="#431407" stroke-width="2.5"/><path d="M55 85 C30 95 25 110 38 115" stroke="#fb923c" stroke-width="12" stroke-linecap="round" fill="none"/><g transform="translate(35, 118)"><ellipse cx="0" cy="0" rx="13" ry="11" fill="#fed7aa" stroke="#9a3412" stroke-width="1.5"/><circle cx="-4" cy="-3" r="2.5" fill="#b45309"/><circle cx="4" cy="-3" r="2.5" fill="#b45309"/><circle cx="0" cy="5" r="3.5" fill="#b45309"/></g><path d="M145 85 C170 95 175 110 162 115" stroke="#fb923c" stroke-width="12" stroke-linecap="round" fill="none"/><g transform="translate(165, 118)"><ellipse cx="0" cy="0" rx="13" ry="11" fill="#fed7aa" stroke="#9a3412" stroke-width="1.5"/><circle cx="-4" cy="-3" r="2.5" fill="#b45309"/><circle cx="4" cy="-3" r="2.5" fill="#b45309"/><circle cx="0" cy="5" r="3.5" fill="#b45309"/></g><path d="M50 105 Q100 55 150 105 Q165 145 100 155 Q35 145 50 105" fill="#fb923c" stroke="#7c2d12" stroke-width="2.5"/><circle cx="75" cy="100" r="5" fill="#1c1917"/><circle cx="125" cy="100" r="5" fill="#1c1917"/><ellipse cx="100" cy="120" rx="6" ry="4" fill="#292524"/><rect x="65" y="155" width="75" height="85" rx="12" fill="#84cc16" stroke="#365314" stroke-width="2.5"/><polygon points="100,155 92,180 100,200 108,180" fill="#facc15"/><path d="M65 175 Q25 175 -5 185" stroke="#fb923c" stroke-width="14" stroke-linecap="round" fill="none"/></svg>
+            </div>
+        </div></div><div id="status-label" class="mb-4 px-12 py-3 bg-white/90 backdrop-blur-sm shadow-xl rounded-full font-black text-slate-800 uppercase tracking-[0.2em] border-2 border-slate-200 text-sm">⚡ 拔河对战 · 经典角色 ⚡</div></div><div id="game-over" class="hidden absolute inset-0 bg-white/98 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6"><h2 id="winner-text" class="text-7xl font-black mb-2">WINNER</h2><div id="final-stats" class="text-3xl font-black mb-6">0:0</div><div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"><div class="bg-blue-50 p-4 rounded-3xl"><h4 class="font-black text-blue-700">🐰 朱迪的答题卡</h4><div id="judy-report" class="space-y-2 text-left max-h-72 overflow-auto"></div></div><div class="bg-orange-50 p-4 rounded-3xl"><h4 class="font-black text-orange-700">🦊 尼克的答题卡</h4><div id="nick-report" class="space-y-2 text-left max-h-72 overflow-auto"></div></div></div><div class="flex gap-4"><button id="downloadPdfBtn" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black text-xl">📄 下载战报PDF</button><button id="playAgainBtn" class="bg-slate-900 text-white px-10 py-3 rounded-2xl font-black text-xl opacity-50 cursor-not-allowed" disabled>✨ 再战一局 ✨</button></div><p class="text-xs text-slate-400 mt-4">下载PDF后即可再次游戏</p></div></main>
+        <aside class="w-1/4 bg-gradient-to-b from-orange-50 to-white flex flex-col p-4 border-l-4 border-orange-200/60 text-right"><div class="flex flex-col items-center mb-2"><div class="bg-orange-600 text-white px-5 py-1.5 rounded-full text-xs font-black">🦊 尼克</div><div id="score2" class="text-7xl font-black text-orange-600">0</div></div><div class="flex-grow flex flex-col justify-center gap-3"><div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-orange-300 min-h-[140px] flex items-center justify-center"><p id="q2" class="text-slate-800 text-xl font-black">🦊 来吧！</p></div><div id="opts2" class="grid gap-2.5"></div><div class="random-order-hint">✨ 选项顺序随机 ✨</div></div></aside>
+    </div>
+    <script>
+    (function(){
+        "use strict";
+        const DEFAULT_QUESTIONS = ${JSON.stringify(currentQuestions)};
+        const INITIAL_DURATION = ${currentDuration};
+        const ADMIN_PASSWORD = "${currentPasswordValue}";
+        function normalizeText(str){if(!str)return'';let s=String(str);s=s.replace(/[\\u200B-\\u200D\\uFEFF]/g,'');s=s.replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));s=s.replace(/\\u3000/g,' ');s=s.replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]/g,'');s=s.replace(/\\s+/g,' ');return s.trim();}
+        function isAnswerEqual(u,c){return normalizeText(u)===normalizeText(c);}
+        let passwordUnlocked=false,remainingAttempts=5,isWaiting=false,waitTimeout=null,pendingModalId=null,globalLocked=false;
+        let currentPassword=ADMIN_PASSWORD;
+        function savePasswordToLocal(p){localStorage.setItem('zootopia_admin_pwd',p);currentPassword=p;}
+        function processWrongPassword(){if(globalLocked)return;remainingAttempts--;updateAttemptsDisplay();if(remainingAttempts<=0)permanentLock();else startWaitPenalty(5);}
+        function startWaitPenalty(s){if(isWaiting)return;isWaiting=true;let r=s;const u=()=>{const sp=document.getElementById('wait-timer');if(sp)sp.innerText='⏳ 等待 '+r+'s';if(r<=0)clearWaitState();else{waitTimeout=setTimeout(()=>{r--;u();},1000);}};u();}
+        function clearWaitState(){if(waitTimeout)clearTimeout(waitTimeout);waitTimeout=null;isWaiting=false;const w=document.getElementById('wait-timer');if(w)w.innerText='';document.getElementById('confirm-pwd-btn').disabled=false;document.getElementById('password-input').disabled=false;document.getElementById('confirm-change-btn').disabled=false;}
+        function updateAttemptsDisplay(){const a=document.getElementById('attempts-left');if(a)a.innerText='剩余次数: '+remainingAttempts;if(remainingAttempts<=0)permanentLock();}
+        function permanentLock(){if(globalLocked)return;globalLocked=true;passwordUnlocked=false;document.getElementById('global-lock').style.display='flex';['timeBtn','quizBtn','changePwdBtn','generateHtmlBtn','startBtn','resetBtn'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=true;});}
+        function verifyPasswordAndUnlock(inp,onOk){if(globalLocked)return false;if(isWaiting){alert("等待惩罚结束");return false;}if(inp===currentPassword){remainingAttempts=5;updateAttemptsDisplay();passwordUnlocked=true;clearWaitState();if(onOk)onOk();return true;}else{processWrongPassword();return false;}}
+        function showPasswordModal(mid){if(globalLocked)return;pendingModalId=mid;document.getElementById('password-modal').style.display='flex';document.getElementById('password-input').value='';}
+        function closePasswordModal(){document.getElementById('password-modal').style.display='none';pendingModalId=null;}
+        function handlePasswordConfirm(){const v=document.getElementById('password-input').value;verifyPasswordAndUnlock(v,()=>{document.getElementById('password-modal').style.display='none';if(pendingModalId){document.getElementById(pendingModalId).style.display='flex';pendingModalId=null;}});}
+        function openChangePwdModal(){if(globalLocked)return;if(!passwordUnlocked){showPasswordModal('change-pwd-modal');return;}document.getElementById('change-pwd-modal').style.display='flex';}
+        function closeChangePwdModal(){document.getElementById('change-pwd-modal').style.display='none';}
+        function handleChangePassword(){if(globalLocked)return;if(isWaiting){alert("请等待");return;}const cur=document.getElementById('current-pwd').value,np=document.getElementById('new-pwd').value,cp=document.getElementById('confirm-pwd').value;if(cur!==currentPassword){processWrongPassword();alert("当前密码错误");return;}if(!np||np.length<4){alert("新密码至少4位");return;}if(np!==cp){alert("不一致");return;}savePasswordToLocal(np);alert("修改成功");closeChangePwdModal();passwordUnlocked=true;}
+        document.getElementById('confirm-pwd-btn').onclick=handlePasswordConfirm;
+        document.getElementById('cancel-pwd-btn').onclick=closePasswordModal;
+        document.getElementById('toggle-password').onclick=()=>{let i=document.getElementById('password-input');i.type=i.type==='password'?'text':'password';};
+        document.getElementById('toggle-current').onclick=()=>{let i=document.getElementById('current-pwd');i.type=i.type==='password'?'text':'password';};
+        document.getElementById('toggle-new').onclick=()=>{let i=document.getElementById('new-pwd');i.type=i.type==='password'?'text':'password';};
+        document.getElementById('toggle-confirm').onclick=()=>{let i=document.getElementById('confirm-pwd');i.type=i.type==='password'?'text':'password';};
+        document.getElementById('confirm-change-btn').onclick=handleChangePassword;
+        document.getElementById('cancel-change-btn').onclick=closeChangePwdModal;
+        document.getElementById('changePwdBtn').onclick=openChangePwdModal;
+        document.getElementById('timeBtn').onclick=()=>{if(globalLocked)return;if(passwordUnlocked)document.getElementById('time-modal').style.display='flex';else showPasswordModal('time-modal');};
+        document.getElementById('quizBtn').onclick=()=>{if(globalLocked)return;if(passwordUnlocked){document.getElementById('ques-modal').style.display='flex';refreshTableDisplay();}else showPasswordModal('ques-modal');};
+        const timeInput=document.getElementById('setup-time');
+        function getStoredDuration(){const s=localStorage.getItem('zootopia_game_duration');if(s){let p=parseInt(s);if(!isNaN(p)&&p>=10&&p<=600)return p;}return INITIAL_DURATION;}
+        function setDurationAndSave(sec){let v=Math.min(600,Math.max(10,sec));localStorage.setItem('zootopia_game_duration',v);timeInput.value=v;if(gameState&&!gameState.active){gameState.maxTime=v;gameState.timeLeft=v;updateTimerDisplay();}}
+        function loadSavedTime(){let d=getStoredDuration();timeInput.value=d;if(gameState&&!gameState.active){gameState.maxTime=d;gameState.timeLeft=d;updateTimerDisplay();}}
+        document.getElementById('saveTimeBtn').onclick=()=>{let v=parseInt(timeInput.value);if(isNaN(v))v=getStoredDuration();v=Math.min(600,Math.max(10,v));setDurationAndSave(v);document.getElementById('time-modal').style.display='none';alert('时长已设为 '+v+' 秒');};
+        let gameState={pool:[],team1Remaining:[],team2Remaining:[],score1:0,score2:0,timeLeft:INITIAL_DURATION,maxTime:INITIAL_DURATION,active:false,ropePos:0,timerInterval:null,gameLog:{team1:[],team2:[]},pendingTimeouts:[]};
+        const domGame={timer:document.getElementById('timer'),q1:document.getElementById('q1'),q2:document.getElementById('q2'),o1:document.getElementById('opts1'),o2:document.getElementById('opts2'),rope:document.getElementById('rope-move-container'),gameOver:document.getElementById('game-over'),winText:document.getElementById('winner-text'),finalRes:document.getElementById('final-stats'),score1:document.getElementById('score1'),score2:document.getElementById('score2'),charJudy:document.getElementById('char-blue'),charNick:document.getElementById('char-red'),tableBody:document.getElementById('questions-table-body'),judyReport:document.getElementById('judy-report'),nickReport:document.getElementById('nick-report'),downloadBtn:document.getElementById('downloadPdfBtn'),playAgainBtn:document.getElementById('playAgainBtn')};
+        function escapeHtml(s){if(!s)return'';return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+        function addQuestionRow(prefill){
+            const row=document.createElement('tr');row.className='border-b';
+            const vals=prefill||{q:'',a:'',b:'',c:'',d:'',correct:''};
+            row.innerHTML='<td class="p-2"><input type="text" value="'+escapeHtml(vals.q)+'" class="question-input w-full"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.a)+'" class="opt-a w-full"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.b)+'" class="opt-b w-full"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.c)+'" class="opt-c w-full"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.d)+'" class="opt-d w-full"></td><td class="p-2"><select class="correct-select w-full"></select></td><td class="p-2 text-center"><button class="del-row text-red-400 font-bold text-lg">🗑️</button></td>';
+            domGame.tableBody.appendChild(row);
+            const select=row.querySelector('.correct-select');
+            const inps=[row.querySelector('.opt-a'),row.querySelector('.opt-b'),row.querySelector('.opt-c'),row.querySelector('.opt-d')];
+            const updateSelect=()=>{const opts=inps.map(i=>normalizeText(i.value));select.innerHTML=opts.map((o,i)=>'<option value="'+escapeHtml(o)+'">'+String.fromCharCode(65+i)+': '+escapeHtml(o)+'</option>').join('');const nc=normalizeText(vals.correct);if(opts.includes(nc))select.value=nc;};
+            inps.forEach(i=>i.addEventListener('input',updateSelect));updateSelect();
+            row.querySelector('.del-row').onclick=()=>row.remove();return row;
+        }
+        function resetDefaultTable(){domGame.tableBody.innerHTML='';DEFAULT_QUESTIONS.forEach(q=>{let a,b,c,d;if(q.options&&Array.isArray(q.options)){a=q.options[0]||'';b=q.options[1]||'';c=q.options[2]||'';d=q.options[3]||'';}else{a=q.a||'';b=q.b||'';c=q.c||'';d=q.d||'';}addQuestionRow({q:q.q,a:a,b:b,c:c,d:d,correct:q.correct});});}
+        function collectTableData(){return Array.from(domGame.tableBody.querySelectorAll('tr')).map(row=>({q:normalizeText(row.querySelector('.question-input').value),options:[normalizeText(row.querySelector('.opt-a').value),normalizeText(row.querySelector('.opt-b').value),normalizeText(row.querySelector('.opt-c').value),normalizeText(row.querySelector('.opt-d').value)],correct:normalizeText(row.querySelector('.correct-select').value)})).filter(q=>q.q&&q.options.every(o=>o));}
+        function refreshTableDisplay(){if(domGame.tableBody.children.length===0)resetDefaultTable();}
+        function saveTableAndClose(){gameState.pool=collectTableData();if(gameState.pool.length===0){resetDefaultTable();gameState.pool=collectTableData();}document.getElementById('ques-modal').style.display='none';alert("题库已保存");}
+        document.getElementById('saveQuesBtn').onclick=saveTableAndClose;
+        document.getElementById('addRowBtn').onclick=()=>addQuestionRow();
+        document.getElementById('resetTableBtn').onclick=resetDefaultTable;
+        document.getElementById('batchOpenBtn').onclick=()=>document.getElementById('batch-panel').classList.remove('hidden');
+        document.getElementById('closeBatchBtn').onclick=()=>document.getElementById('batch-panel').classList.add('hidden');
+        document.getElementById('clearBatchBtn').onclick=()=>document.getElementById('batch-text').value='';
+        document.getElementById('importBatchBtn').onclick=()=>{const raw=document.getElementById('batch-text').value;if(!raw.trim())return alert("粘贴数据");const lines=raw.split(/\\r?\\n/);let added=0;for(let line of lines){line=line.trim();if(!line)continue;let parts=line.split('|').map(s=>s.trim());if(parts.length<6){alert("字段不足: "+line);continue;}let[q,a,b,c,d,correct]=parts;if(!q||!a||!b||!c||!d||!correct)continue;if(![a,b,c,d].includes(correct)){alert("正确选项错误: "+correct);continue;}addQuestionRow({q,a,b,c,d,correct});added++;}alert("批量添加 "+added+" 题");document.getElementById('batch-text').value='';document.getElementById('batch-panel').classList.add('hidden');};
+        const PULL_STEP=22,MAX_SHIFT=150;
+        function clearAllTimeouts(){gameState.pendingTimeouts.forEach(id=>clearTimeout(id));gameState.pendingTimeouts=[];}
+        function addTimeout(fn,delay){const id=setTimeout(()=>{fn();gameState.pendingTimeouts=gameState.pendingTimeouts.filter(t=>t!==id);},delay);gameState.pendingTimeouts.push(id);return id;}
+        function updateScoresAndRope(){domGame.score1.textContent=gameState.score1;domGame.score2.textContent=gameState.score2;gameState.ropePos=Math.max(-MAX_SHIFT,Math.min(MAX_SHIFT,gameState.ropePos));domGame.rope.style.transform='translateX('+gameState.ropePos+'px)';if(gameState.active&&Math.abs(gameState.ropePos)>=MAX_SHIFT)endGame();}
+        function formatTime(sec){return Math.floor(sec/60).toString().padStart(2,'0')+':'+(sec%60).toString().padStart(2,'0');}
+        function updateTimerDisplay(){domGame.timer.textContent=formatTime(gameState.timeLeft);}
+        function animatePull(el){el.classList.remove('idle-float');el.classList.add('pull-anim');addTimeout(()=>{if(el){el.classList.remove('pull-anim');el.classList.add('idle-float');}},400);}
+        function takeRandomQuestion(team){const remaining=team===1?gameState.team1Remaining:gameState.team2Remaining;if(!remaining.length)return null;const idx=Math.floor(Math.random()*remaining.length);const q=remaining[idx];remaining.splice(idx,1);return q;}
+        function renderQuestion(team){if(!gameState.active)return;const item=takeRandomQuestion(team);if(!item){const qBox=team===1?domGame.q1:domGame.q2;qBox.textContent=team===1?"🐰 朱迪已完成所有题目":"🦊 尼克已完成所有题目";(team===1?domGame.o1:domGame.o2).innerHTML='<div class="text-center p-4">✨ 已答完 ✨</div>';if(gameState.active&&gameState.team1Remaining.length===0&&gameState.team2Remaining.length===0)endGame();return;}const qBox=team===1?domGame.q1:domGame.q2,optsBox=team===1?domGame.o1:domGame.o2;qBox.textContent=item.q;optsBox.innerHTML='';const shuffled=[...item.options].sort(()=>Math.random()-0.5);shuffled.forEach(opt=>{const btn=document.createElement('button');btn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm bg-white border-b-4 border-slate-200 hover:bg-slate-50';btn.textContent=opt;btn.onclick=()=>handleAnswer(team,opt,item.correct,btn,item.q);optsBox.appendChild(btn);});}
+        function handleAnswer(team,sel,cor,btn,qText){if(!gameState.active)return;const optsBox=team===1?domGame.o1:domGame.o2;optsBox.querySelectorAll('button').forEach(b=>b.disabled=true);const ok=isAnswerEqual(sel,cor);gameState.gameLog[team===1?'team1':'team2'].push({question:qText,userAnswer:sel,correctAnswer:cor,isCorrect:ok});if(ok){btn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white border-b-4 '+(team===1?'bg-blue-500 border-blue-700':'bg-orange-500 border-orange-700');if(team===1){gameState.score1+=10;gameState.ropePos-=PULL_STEP;animatePull(domGame.charJudy);}else{gameState.score2+=10;gameState.ropePos+=PULL_STEP;animatePull(domGame.charNick);}updateScoresAndRope();addTimeout(()=>renderQuestion(team),500);}else{btn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-red-500 border-red-700';const correctBtn=Array.from(optsBox.querySelectorAll('button')).find(b=>isAnswerEqual(b.textContent,cor));if(correctBtn)correctBtn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-green-500 border-green-700 pull-anim';addTimeout(()=>renderQuestion(team),1500);}addTimeout(()=>{if(gameState.active&&gameState.team1Remaining.length===0&&gameState.team2Remaining.length===0)endGame();},100);}
+        function disableAdminButtons(d){['timeBtn','quizBtn','changePwdBtn','generateHtmlBtn'].forEach(id=>{const btn=document.getElementById(id);if(btn)d?btn.classList.add('disabled-btn'):btn.classList.remove('disabled-btn');});}
+        function endGame(){if(!gameState.active)return;gameState.active=false;clearInterval(gameState.timerInterval);clearAllTimeouts();disableAdminButtons(false);const winner=gameState.ropePos<0?'JUDY':(gameState.ropePos>0?'NICK':'DRAW');domGame.winText.textContent=winner==='DRAW'?'🤝 平局！':(winner==='JUDY'?'🐰 朱迪胜利！':'🦊 尼克胜利！');domGame.finalRes.textContent=gameState.score1+' : '+gameState.score2;const renderReport=(tk,ct)=>{const logs=gameState.gameLog[tk];if(!logs.length){ct.innerHTML='<p class="text-center text-slate-400">无记录</p>';return;}ct.innerHTML='';logs.forEach((log,idx)=>{const div=document.createElement('div');div.className='p-3 rounded-xl mb-2 text-xs border-l-4 '+(log.isCorrect?'bg-green-100 border-green-500':'bg-red-100 border-red-500');div.innerHTML='<p class="font-bold">'+(idx+1)+'. '+escapeHtml(log.question)+'</p><p>你的答案: '+escapeHtml(log.userAnswer)+' '+(log.isCorrect?'✓':'✗')+'</p>'+(log.isCorrect?'':'<p class="text-slate-500">正确答案: '+escapeHtml(log.correctAnswer)+'</p>');ct.appendChild(div);});};renderReport('team1',domGame.judyReport);renderReport('team2',domGame.nickReport);domGame.gameOver.classList.remove('hidden');domGame.playAgainBtn.disabled=true;domGame.playAgainBtn.classList.add('opacity-50','cursor-not-allowed');domGame.downloadBtn.onclick=downloadPDFReport;}
+        async function downloadPDFReport(){const wt=domGame.winText.innerText,st=domGame.finalRes.innerText;const jc=document.getElementById('judy-report').cloneNode(true),nc=document.getElementById('nick-report').cloneNode(true);jc.style.maxHeight='none';jc.style.overflow='visible';nc.style.maxHeight='none';nc.style.overflow='visible';const container=document.createElement('div');container.style.fontFamily="'Inter', sans-serif";container.style.padding='2rem';container.style.backgroundColor='white';container.style.maxWidth='1000px';container.style.margin='0 auto';const hd=document.createElement('div');hd.style.textAlign='center';hd.style.marginBottom='2rem';hd.innerHTML='<h1 style="font-size:2.5rem;font-weight:900;">🐰 vs 🦊 拔河战报</h1><p style="color:#475569;">'+new Date().toLocaleString()+'</p><div style="background:#f1f5f9;display:inline-block;padding:0.5rem 1.5rem;border-radius:60px;margin-top:0.6rem;"><span style="font-weight:900;">🏆 '+wt+' '+st+'</span></div>';container.appendChild(hd);const fr=document.createElement('div');fr.style.display='flex';fr.style.flexWrap='wrap';fr.style.gap='1.5rem';fr.style.justifyContent='center';const judyCard=document.createElement('div');judyCard.style.flex='1';judyCard.style.minWidth='280px';judyCard.style.backgroundColor='#eff6ff';judyCard.style.borderRadius='24px';judyCard.style.padding='1rem';judyCard.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';const jt=document.createElement('h4');jt.style.fontWeight='900';jt.style.color='#1e3a8a';jt.style.fontSize='1.25rem';jt.style.marginBottom='0.75rem';jt.innerHTML='🐰 朱迪的答题卡';judyCard.appendChild(jt);judyCard.appendChild(jc);const nickCard=document.createElement('div');nickCard.style.flex='1';nickCard.style.minWidth='280px';nickCard.style.backgroundColor='#fff7ed';nickCard.style.borderRadius='24px';nickCard.style.padding='1rem';nickCard.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';const nt=document.createElement('h4');nt.style.fontWeight='900';nt.style.color='#c2410c';nt.style.fontSize='1.25rem';nt.style.marginBottom='0.75rem';nt.innerHTML='🦊 尼克的答题卡';nickCard.appendChild(nt);nickCard.appendChild(nc);fr.appendChild(judyCard);fr.appendChild(nickCard);container.appendChild(fr);document.body.appendChild(container);try{await html2pdf().set({margin:[0.5,0.5,0.5,0.5],filename:'拔河战报_'+Date.now()+'.pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,backgroundColor:'#ffffff'},jsPDF:{unit:'in',format:'a4'}}).from(container).save();domGame.playAgainBtn.disabled=false;domGame.playAgainBtn.classList.remove('opacity-50','cursor-not-allowed');alert("PDF已保存，可再次游戏");}catch(e){alert("生成失败: "+e);}finally{document.body.removeChild(container);}}
+        function applyAndStart(){if(globalLocked)return;if(gameState.active)resetGame(true);clearAllTimeouts();if(gameState.timerInterval)clearInterval(gameState.timerInterval);let cm=parseInt(timeInput.value);if(isNaN(cm))cm=getStoredDuration();cm=Math.min(600,Math.max(10,cm));gameState.maxTime=cm;gameState.timeLeft=cm;if(!gameState.pool.length){resetDefaultTable();gameState.pool=collectTableData();}if(gameState.pool.length===0){alert("题库为空");return;}for(let q of gameState.pool)if(!q.options.includes(q.correct))q.correct=q.options[0];gameState.team1Remaining=gameState.pool.map(q=>({...q,options:[...q.options]}));gameState.team2Remaining=gameState.pool.map(q=>({...q,options:[...q.options]}));gameState.score1=0;gameState.score2=0;gameState.ropePos=0;gameState.gameLog={team1:[],team2:[]};gameState.active=true;domGame.gameOver.classList.add('hidden');updateScoresAndRope();updateTimerDisplay();disableAdminButtons(true);renderQuestion(1);renderQuestion(2);gameState.timerInterval=setInterval(()=>{if(!gameState.active)return;gameState.timeLeft--;updateTimerDisplay();if(gameState.timeLeft<=0){clearInterval(gameState.timerInterval);endGame();}},1000);}
+        function resetGame(){if(globalLocked)return;gameState.active=false;clearInterval(gameState.timerInterval);clearAllTimeouts();disableAdminButtons(false);domGame.gameOver.classList.add('hidden');domGame.score1.textContent='0';domGame.score2.textContent='0';domGame.q1.textContent="🐾 准备好了吗？";domGame.q2.textContent="🦊 来吧！";domGame.o1.innerHTML='';domGame.o2.innerHTML='';domGame.rope.style.transform='translateX(0)';gameState.score1=0;gameState.score2=0;gameState.ropePos=0;gameState.timeLeft=gameState.maxTime;gameState.gameLog={team1:[],team2:[]};updateTimerDisplay();if(gameState.pool.length){gameState.team1Remaining=gameState.pool.map(q=>({...q,options:[...q.options]}));gameState.team2Remaining=gameState.pool.map(q=>({...q,options:[...q.options]}));}}
+        document.getElementById('startBtn').onclick=applyAndStart;
+        document.getElementById('resetBtn').onclick=resetGame;
+        domGame.playAgainBtn.onclick=()=>{if(!domGame.playAgainBtn.disabled)resetGame();else alert("请先下载战报PDF");};
+        document.getElementById('generateHtmlBtn').onclick=()=>{alert("您已在独立版本中，可直接使用所有功能。如需生成新的HTML，请回到原始页面操作。");};
+        function initGame(){loadSavedTime();resetDefaultTable();gameState.pool=collectTableData();gameState.team1Remaining=[...gameState.pool];gameState.team2Remaining=[...gameState.pool];domGame.gameOver.classList.add('hidden');updateTimerDisplay();}
+        initGame();
+    })();
+    <\/script>
+</body>
+</html>`;
+
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const a = document.createElement('a');
+                a.download = `zootopia_tug_standalone_${Date.now()}.html`;
+                a.href = URL.createObjectURL(blob);
+                a.click();
+                URL.revokeObjectURL(a.href);
+                alert("独立HTML文件已生成，所有按钮均可正常使用！");
+            }
+
+            document.getElementById('generateHtmlBtn').onclick = () => { if (globalLocked) return;
+                generateStandaloneHTML(); };
+
+            function initGame() { loadSavedTime();
+                resetDefaultTable();
+                gameState.pool = collectTableData();
+                gameState.team1Remaining = [...gameState.pool];
+                gameState.team2Remaining = [...gameState.pool];
+                domGame.gameOver.classList.add('hidden');
+                updateTimerDisplay(); }
+            initGame();
+        })();
+    </script>
+</body>
+</html>
